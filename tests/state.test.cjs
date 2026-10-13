@@ -24,5 +24,12 @@ test('subscription selection, persistence, deduplication and emergency latch',as
   await bot.publish({...r,mode:'schedule',status:'По графику — свет предусмотрен',cells,date:'13.10.2026'});
   assert.equal(bot.state.latest.one.mode,'schedule');assert.equal(bot.state.latest.one.resumed,true);assert.match(messages.at(-1).text,/возвращении к графикам/);
   const restored=new Subscriptions(null,null,send,format,()=>{},'',{},structuredClone(bot.state));assert.deepEqual(restored.selected(10),['one']);assert.equal(restored.state.offset,4);
+  await bot.update({update_id:4,message:{chat:{id:-100,type:'supergroup'},from:{id:10},text:'/start'}});
+  menu=bot.state.menus[-100];assert.ok(menu,'plain group commands must be accepted');
+  const groupCallback=(id,action)=>bot.update({update_id:id,callback_query:{id:String(id),from:{id:10},message:{chat:{id:-100},message_id:menu.messageId},data:`addr:${menu.nonce}:${action}`}});
+  await groupCallback(5,'one');await groupCallback(6,'save');assert.deepEqual(bot.selected(-100),['one']);
+  const before=messages.length;await bot.update({update_id:7,message:{chat:{id:-100,type:'supergroup'},from:{id:10},text:'/status@another_bot'}});assert.equal(messages.length,before);
+  await bot.update({update_id:8,message:{chat:{id:-100,type:'supergroup'},from:{id:10},text:'/status'}});assert.ok(messages.slice(before).every(m=>m.id==='-100'));assert.match(messages[before].text,/Example/);assert.ok(bot.state.subscribers[-100].pending);
  }
 });
+
