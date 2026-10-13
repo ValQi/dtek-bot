@@ -1,5 +1,5 @@
 const path=require('node:path');
-async function collect(browser,address){
+async function collectOnce(browser,address){
  const context=await browser.newContext({locale:'uk-UA',timezoneId:'Europe/Kyiv'});
  const page=await context.newPage();
  const base={id:address.id,label:address.label,source:new URL(address.url).origin+'/ua/shutdowns'};
@@ -46,6 +46,15 @@ async function collect(browser,address){
   return {...base,...data,checked:new Date().toISOString()};
  }catch(e){const code=String(e.message).match(/DTEK_WAIT_[a-z_-]+|HTTP_\d{3}|Нет актуального графика|Неизвестный статус графика|ДТЭК сбросил поле адреса/)?.[0]||(e.name==='TimeoutError'?'TIMEOUT':'UNAVAILABLE');console.warn('DTEK '+address.id+' '+stage+' '+code);return {...base,status:'Данные недоступны',error:'ДТЭК не предоставил актуальные данные. Проверка продолжится.',checked:new Date().toISOString()};}
  finally{await context.close();}
+}
+async function collect(browser,address){
+ let result;
+ for(let attempt=0;attempt<2;attempt++){
+  result=await collectOnce(browser,address);
+  if(!result.error)return result;
+  if(attempt===0){console.log('DTEK '+address.id+' retry with a fresh browser context');await new Promise(r=>setTimeout(r,2000));}
+ }
+ return result;
 }
 module.exports={collect};
 
