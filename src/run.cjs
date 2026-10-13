@@ -3,7 +3,7 @@ const {collect}=require('./collector.cjs');
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 async function main(){
  const token=process.env.TELEGRAM_BOT_TOKEN;if(!token)throw Error('Configure TELEGRAM_BOT_TOKEN');
- const store=new StateStore(),state=await store.load();
+ const store=new StateStore(),state=await store.load();console.log('Encrypted state loaded.');
  async function api(method,body={}){
   let result;
   for(let attempt=0;attempt<2;attempt++){
@@ -11,9 +11,9 @@ async function main(){
    if(result.ok)return result.result;
    if(result.error_code===429&&attempt===0){await sleep(Math.min(result.parameters?.retry_after||3,60)*1000);continue;}break;
   }
-  const e=Error('Telegram operation failed');e.blocked=result.error_code===403;e.expired=/query is too old|query id is invalid/i.test(result.description||'');e.unchanged=/message is not modified/i.test(result.description||'');throw e;
+  const e=Error('Telegram operation failed');console.warn('Telegram '+method+' HTTP '+Number(result.error_code));e.blocked=result.error_code===403;e.expired=/query is too old|query id is invalid/i.test(result.description||'');e.unchanged=/message is not modified/i.test(result.description||'');throw e;
  }
- const me=await api('getMe'),hook=await api('getWebhookInfo');
+ const me=await api('getMe'),hook=await api('getWebhookInfo');console.log('Telegram credentials verified.');
  if(hook.url)throw Error('Webhook is active: remove it before switching to Actions polling');
  const send=async(text,id,options={})=>{const r=await api('sendMessage',{chat_id:id,text,...options});await sleep(1100);return r;};
  const subscriptions=new Subscriptions(null,null,send,format,()=>{},me.username,{
@@ -27,14 +27,14 @@ async function main(){
    const updates=await api('getUpdates',{offset:subscriptions.state.offset,timeout:0,limit:100,allowed_updates:['message','callback_query']});
    for(const u of updates)await subscriptions.update(u);if(updates.length<100)break;
   }
-  browser=await require('playwright').chromium.launch({headless:true});
+  console.log('Telegram updates processed. Starting DTEK checks.');browser=await require('playwright').chromium.launch({headless:true});
   // Two addresses at a time, avoiding a burst of requests against DTEK.
   for(let i=0;i<addresses.length;i+=2){
    const results=await Promise.all(addresses.slice(i,i+2).map(a=>collect(browser,a)));
-   for(const r of results){try{await subscriptions.publish(r);}catch{failed=true;}if(r.error)failed=true;}
+   for(const r of results){try{await subscriptions.publish(r);}catch{console.warn('Telegram delivery failed for '+r.id);failed=true;}if(r.error)failed=true;else console.log('DTEK '+r.id+' received');}
   }
  }finally{
-  try{await store.save(subscriptions.state);}finally{if(browser)await browser.close();}
+  try{await store.save(subscriptions.state);console.log('Encrypted state saved.');}finally{if(browser)await browser.close();}
  }
  if(failed)throw Error('Some DTEK checks or Telegram deliveries failed; state was saved');
  console.log('DTEK checks completed; encrypted state saved.');
