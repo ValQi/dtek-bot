@@ -5,7 +5,7 @@ async function collect(browser,address){
  const base={id:address.id,label:address.label,source:new URL(address.url).origin+'/ua/shutdowns'};
  let stage='navigation';
  try{
-  const response=await page.goto(base.source,{waitUntil:'domcontentloaded',timeout:45000});
+  const response=await page.goto(base.source,{waitUntil:'load',timeout:45000});
   if(response?.status()>=400)throw Error('HTTP_'+response.status());
   stage='page-data';
   await page.addScriptTag({path:path.join(__dirname,'core.js')});
@@ -17,9 +17,13 @@ async function collect(browser,address){
    const invalid=()=>({...mode(),scope:'region',status:mode().mode==='emergency'?'⚠️ ДТЭК сообщает об экстренных отключениях':'⚠️ ДТЭК сообщает, что график не действует'});
    await wait(()=>document.querySelector('#discon_form')||emergency(),'form');
    if(emergency())return invalid();
+   await wait(()=>typeof DisconSchedule!=='undefined'&&DisconSchedule.streets&&typeof $==='function','site-data');
    async function choose(field,value){
     const input=await wait(()=>{const e=document.querySelector('#'+field);return e&&!e.disabled?e:null;},field+'-input');
-    input.focus();input.value=value;input.dispatchEvent(new Event('input',{bubbles:true}));
+    // Search using a distinctive word. The site's substring filter does not
+    // normalize spaces around prefixes; confirm the full option afterwards.
+    const query=field==='house_num'?value:value.replace(/^(?:с\.|м\.|вул\.|бул\.)\s*/i,'').split(/\s+/)[0];
+    input.focus();input.value=query;input.dispatchEvent(new Event('input',{bubbles:true}));
     const option=await wait(()=>[...document.querySelectorAll('#'+field+'autocomplete-list > div')].find(e=>DtekCore.normalize(e.querySelector('input')?.value||e.textContent)===DtekCore.normalize(value)),field+'-options');
     input.blur();option.click();await wait(()=>DtekCore.normalize(input.value)===DtekCore.normalize(value),field+'-selection');
    }
@@ -41,3 +45,4 @@ async function collect(browser,address){
  finally{await context.close();}
 }
 module.exports={collect};
+
