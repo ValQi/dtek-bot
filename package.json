@@ -1,0 +1,6 @@
+{
+  "name": "dtek-actions-bot", "version": "1.0.0", "private": true,
+  "scripts": {"start": "node src/run.cjs", "test": "node --test"},
+  "dependencies": {"playwright": "1.64.0"}
+}
+

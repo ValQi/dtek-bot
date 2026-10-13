@@ -1,0 +1,39 @@
+name: DTEK monitor
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '2-57/5 * * * *'
+permissions:
+  contents: write
+concurrency:
+  group: dtek-monitor
+  cancel-in-progress: false
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Validate Secrets
+        run: node -e "require('./src/addresses.js'); require('./src/state.cjs').key(process.env.STATE_KEY); if(!process.env.TELEGRAM_BOT_TOKEN)process.exit(1)"
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          DTEK_ADDRESSES_JSON: ${{ secrets.DTEK_ADDRESSES_JSON }}
+          STATE_KEY: ${{ secrets.STATE_KEY }}
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm test
+      - run: npx playwright install --with-deps chromium
+      - name: Check DTEK and deliver changes
+        run: npm start
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          DTEK_ADDRESSES_JSON: ${{ secrets.DTEK_ADDRESSES_JSON }}
+          STATE_KEY: ${{ secrets.STATE_KEY }}
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
