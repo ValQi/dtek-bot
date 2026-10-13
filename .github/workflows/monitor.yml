@@ -1,5 +1,7 @@
 name: DTEK monitor
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
   schedule:
     - cron: '2-57/5 * * * *'
