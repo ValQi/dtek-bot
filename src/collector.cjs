@@ -9,6 +9,8 @@ async function collect(browser,address){
   if(response?.status()>=400)throw Error('HTTP_'+response.status());
   stage='page-data';
   await page.addScriptTag({path:path.join(__dirname,'core.js')});
+  const readiness=await page.evaluate(()=>({cityHandler:typeof document.querySelector('#city')?.oninput==='function',streetHandler:typeof document.querySelector('#street')?.oninput==='function',cityCount:typeof DisconSchedule!=='undefined'?Object.keys(DisconSchedule.streets||{}).length:0}));
+  console.log('DTEK readiness '+address.id+' '+JSON.stringify(readiness));
   const data=await page.evaluate(async a=>{
    const sleep=ms=>new Promise(r=>setTimeout(r,ms));
    async function wait(fn,stage){for(let i=0;i<80;i++){const v=fn();if(v)return v;await sleep(250);}throw Error('DTEK_WAIT_'+stage);}
@@ -20,6 +22,7 @@ async function collect(browser,address){
    await wait(()=>typeof DisconSchedule!=='undefined'&&DisconSchedule.streets&&typeof $==='function','site-data');
    async function choose(field,value){
     const input=await wait(()=>{const e=document.querySelector('#'+field);return e&&!e.disabled?e:null;},field+'-input');
+    await wait(()=>typeof input.oninput==='function',field+'-handler');
     // Search using a distinctive word. The site's substring filter does not
     // normalize spaces around prefixes; confirm the full option afterwards.
     const query=field==='house_num'?value:value.replace(/^(?:с\.|м\.|вул\.|бул\.)\s*/i,'').split(/\s+/)[0];
