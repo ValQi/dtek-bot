@@ -23,6 +23,7 @@ async function main(){
  },state);
  let browser,failed=false;
  try{
+  if(subscriptions.state.commandsVersion!==1){await api('setMyCommands',{commands:[{command:'start',description:'Выбрать адреса для уведомлений'},{command:'addresses',description:'Изменить выбранные адреса'},{command:'status',description:'Показать статус и проверить ДТЭК'},{command:'stop',description:'Отключить уведомления'}]});subscriptions.state.commandsVersion=1;}
   // Drain up to 1,000 updates. The offset is encrypted together with subscriptions.
   for(let batch=0;batch<10;batch++){
    const updates=await api('getUpdates',{offset:subscriptions.state.offset,timeout:0,limit:100,allowed_updates:['message','callback_query']});
