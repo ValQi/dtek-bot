@@ -56,7 +56,7 @@ class Subscriptions{
   else{
    const m=u.message,[command,target]=(m?.text||'').trim().split(/\s/)[0].toLowerCase().split('@');
    const group=['group','supergroup'].includes(m?.chat?.type);
-   if(m?.chat?.type==='private'||group&&this.botUsername&&target===this.botUsername){
+   if((m?.chat?.type==='private'||group)&&(!target||target===this.botUsername)){
     const id=String(m.chat.id);
     try{
      if(command==='/start'||command==='/addresses')await this.showMenu(id,m.from?.id??m.chat.id,group);
@@ -65,7 +65,7 @@ class Subscriptions{
       await this.send('Уведомления отключены. /start'+(group?'@'+this.botUsername:'')+' — выбрать адреса заново.',id);
      }else if(command==='/status'){
       if(!this.selected(id).length)await this.showMenu(id,m.from?.id??m.chat.id,group);
-      else{this.request(id);await this.send('Запросил свежие данные по выбранным адресам. Результаты придут отдельными сообщениями.',id);}
+      else{await this.send(this.snapshot(this.selected(id)),id);this.request(id);await this.send('Это последние полученные данные. Сейчас проверяю ДТЭК заново; свежие результаты придут отдельно.',id);}
      }
     }catch(e){if(e.blocked){delete this.state.subscribers[id];delete this.state.menus[id];this.save();}else throw e;}
    }
@@ -101,5 +101,6 @@ class Subscriptions{
  });}
 }
 module.exports={Subscriptions};
+
 
 
