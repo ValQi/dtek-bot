@@ -7,7 +7,8 @@ async function main(){
  async function api(method,body={}){
   let result;
   for(let attempt=0;attempt<2;attempt++){
-   const r=await fetch('https://api.telegram.org/bot'+token+'/'+method,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(30000)});result=await r.json();
+   try{const r=await fetch('https://api.telegram.org/bot'+token+'/'+method,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(30000)});result=await r.json();}
+   catch(e){console.warn('Telegram '+method+' transport failure: '+(['TypeError','TimeoutError','AbortError','SyntaxError'].includes(e.name)?e.name:'NETWORK'));if(attempt===0){await sleep(1500);continue;}throw Error('Telegram transport unavailable');}
    if(result.ok)return result.result;
    if(result.error_code===429&&attempt===0){await sleep(Math.min(result.parameters?.retry_after||3,60)*1000);continue;}break;
   }
@@ -41,3 +42,4 @@ async function main(){
 }
 if(require.main===module)main().catch(e=>{console.error(['Configure TELEGRAM_BOT_TOKEN','Webhook is active: remove it before switching to Actions polling'].includes(e.message)?e.message:'Run failed. Check Secrets, Actions permissions and DTEK availability. No credentials are logged.');process.exitCode=1;});
 module.exports={main};
+
