@@ -49,12 +49,11 @@ async function collectOnce(browser,address){
 }
 async function collect(browser,address){
  let result;
- for(let attempt=0;attempt<2;attempt++){
+ for(let attempt=0;attempt<3;attempt++){
   result=await collectOnce(browser,address);
   if(!result.error)return result;
-  if(attempt===0){console.log('DTEK '+address.id+' retry with a fresh browser context');await new Promise(r=>setTimeout(r,2000));}
+  if(attempt<2){console.log('DTEK '+address.id+' retry with a fresh browser context');await new Promise(r=>setTimeout(r,attempt===0?2000:5000));}
  }
  return result;
 }
 module.exports={collect};
-
