@@ -1,0 +1,11 @@
+{
+ "name":"dtek-telegram",
+ "main":"index.mjs",
+ "compatibility_date":"2026-10-13",
+ "compatibility_flags":["nodejs_compat"],
+ "workers_dev":true,
+ "vars":{"GITHUB_REPOSITORY":"ValQi/dtek-bot","BOT_USERNAME":"dtek_svitlo_e_chi_nema_bot"},
+ "durable_objects":{"bindings":[{"name":"BOT","class_name":"BotState"}]},
+ "migrations":[{"tag":"v1","new_sqlite_classes":["BotState"]}],
+ "triggers":{"crons":["*/5 * * * *"]}
+}
