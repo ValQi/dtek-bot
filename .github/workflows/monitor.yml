@@ -3,10 +3,8 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
-  schedule:
-    - cron: '*/5 * * * *'
 permissions:
-  contents: write
+  contents: read
 concurrency:
   group: dtek-monitor
   cancel-in-progress: false
@@ -22,20 +20,18 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-      - name: Validate Secrets
-        run: node -e "require('./src/addresses.js'); require('./src/state.cjs').key(process.env.STATE_KEY); if(!process.env.TELEGRAM_BOT_TOKEN)process.exit(1)"
+      - name: Validate configuration
+        run: node -e "require('./src/addresses.js'); const u=new URL(process.env.WORKER_URL); if(u.protocol!=='https:'||u.username||u.password||!process.env.WORKER_SECRET)process.exit(1)"
         env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           DTEK_ADDRESSES_JSON: ${{ secrets.DTEK_ADDRESSES_JSON }}
-          STATE_KEY: ${{ secrets.STATE_KEY }}
+          WORKER_URL: ${{ secrets.WORKER_URL }}
+          WORKER_SECRET: ${{ secrets.WORKER_SECRET }}
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npm test
       - run: npx playwright install --with-deps chromium
-      - name: Check DTEK and deliver changes
-        run: npm start
+      - name: Check DTEK and deliver results to Cloudflare
+        run: node src/run-cloud.cjs
         env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           DTEK_ADDRESSES_JSON: ${{ secrets.DTEK_ADDRESSES_JSON }}
-          STATE_KEY: ${{ secrets.STATE_KEY }}
-          GITHUB_TOKEN: ${{ github.token }}
-          GITHUB_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          WORKER_URL: ${{ secrets.WORKER_URL }}
+          WORKER_SECRET: ${{ secrets.WORKER_SECRET }}
